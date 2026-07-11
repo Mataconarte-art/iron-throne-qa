@@ -22,3 +22,5 @@ dist/
 # eval outputs
 eval/results/*
 !eval/results/.gitkeep
+
+echo ingest/out/ >> .gitignore
