@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Old Valyria sigil">
+  <rect width="64" height="64" rx="12" fill="#efe7d3"/>
+  <path d="M32 12 C30 24 22 26 24 38 C25 46 30 50 32 50 C34 50 39 46 40 38 C42 26 34 24 32 12 Z"
+        fill="#6e1a1a"/>
+  <path d="M32 26 C31 32 28 34 29 40 C30 44 32 46 32 46 C32 46 34 44 35 40 C36 34 33 32 32 26 Z"
+        fill="#a83232"/>
+</svg>

@@ -1,0 +1,29 @@
+# Cloudflare Pages + Functions configuration.
+# Phase 0: no real bindings are required yet. The blocks below are commented
+# scaffolding — uncomment and fill IDs as each phase brings a service online.
+
+name = "iron-throne-qa"
+compatibility_date = "2025-07-01"
+pages_build_output_dir = "public"
+
+# --- Workers AI (Phase 1+): embeddings via bge-small-en-v1.5, 384-dim ---
+# [ai]
+# binding = "AI"
+
+# --- Vectorize (Phase 1+): swappable behind functions/_lib/vectorStore.js ---
+# NOTE: index must be created 384-dim to match bge-small-en-v1.5.
+#   wrangler vectorize create iron-throne --dimensions=384 --metric=cosine
+# [[vectorize]]
+# binding = "VECTORIZE"
+# index_name = "iron-throne"
+
+# --- D1 (only if graph.json outgrows memory; see graph/schema.sql) ---
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "iron-throne-graph"
+# database_id = "REPLACE_ME"
+
+# Secrets (auth token, provider API keys) are set with:
+#   wrangler pages secret put AUTH_TOKEN
+#   wrangler pages secret put GEMINI_API_KEY
+# and are NOT stored in this file. Local dev reads them from .dev.vars.

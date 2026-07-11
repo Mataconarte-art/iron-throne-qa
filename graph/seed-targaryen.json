@@ -1,0 +1,36 @@
+{
+  "$comment": "Curated genealogy backbone (critique 3). Source of truth for relational Q&A; loaded in-memory and traversed. Small, verified subset for Phase 0 — expanded in Phase 2. Node ids are stable slugs.",
+  "meta": {
+    "version": "0.1.0",
+    "scope": "Targaryen dynasty (seed subset)",
+    "canon_note": "Facts drawn from Fire & Blood / the novels. Spoiler tier ignored here; the ceiling tag is a per-chunk annotation (critique 9)."
+  },
+  "nodes": [
+    { "id": "viserys-i", "name": "Viserys I Targaryen", "house": "Targaryen", "gender": "male" },
+    { "id": "aemma-arryn", "name": "Aemma Arryn", "house": "Arryn", "gender": "female" },
+    { "id": "alicent-hightower", "name": "Alicent Hightower", "house": "Hightower", "gender": "female" },
+    { "id": "rhaenyra", "name": "Rhaenyra Targaryen", "house": "Targaryen", "gender": "female" },
+    { "id": "daemon", "name": "Daemon Targaryen", "house": "Targaryen", "gender": "male" },
+    { "id": "aegon-ii", "name": "Aegon II Targaryen", "house": "Targaryen", "gender": "male" },
+    { "id": "helaena", "name": "Helaena Targaryen", "house": "Targaryen", "gender": "female" },
+    { "id": "aemond", "name": "Aemond Targaryen", "house": "Targaryen", "gender": "male" },
+    { "id": "jacaerys", "name": "Jacaerys Velaryon", "house": "Velaryon", "gender": "male" },
+    { "id": "aegon-iii", "name": "Aegon III Targaryen", "house": "Targaryen", "gender": "male" }
+  ],
+  "edges": [
+    { "type": "spouse", "a": "viserys-i", "b": "aemma-arryn" },
+    { "type": "spouse", "a": "viserys-i", "b": "alicent-hightower" },
+    { "type": "spouse", "a": "rhaenyra", "b": "daemon" },
+    { "type": "parent", "from": "viserys-i", "to": "rhaenyra" },
+    { "type": "parent", "from": "aemma-arryn", "to": "rhaenyra" },
+    { "type": "parent", "from": "viserys-i", "to": "aegon-ii" },
+    { "type": "parent", "from": "alicent-hightower", "to": "aegon-ii" },
+    { "type": "parent", "from": "viserys-i", "to": "helaena" },
+    { "type": "parent", "from": "alicent-hightower", "to": "helaena" },
+    { "type": "parent", "from": "viserys-i", "to": "aemond" },
+    { "type": "parent", "from": "alicent-hightower", "to": "aemond" },
+    { "type": "parent", "from": "rhaenyra", "to": "jacaerys" },
+    { "type": "parent", "from": "rhaenyra", "to": "aegon-iii" },
+    { "type": "parent", "from": "daemon", "to": "aegon-iii" }
+  ]
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en" data-theme="blackfyre">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0d" />
+  <title>Iron Throne Q&amp;A</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/blackfyre.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/blackfyre.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/tokens.css" />
+  <link rel="stylesheet" href="/styles/base.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="sigil" aria-hidden="true"></span>
+      <h1>Iron Throne Q&amp;A</h1>
+    </div>
+    <div class="theme-switch" role="group" aria-label="Theme">
+      <button data-theme-btn="blackfyre" title="Blackfyre">Blackfyre</button>
+      <button data-theme-btn="valyria" title="Old Valyria">Valyria</button>
+      <button data-theme-btn="wall" title="The Wall">The Wall</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <form id="ask-form" class="ask" autocomplete="off">
+      <label class="field">
+        <span class="field-label">Ask the histories</span>
+        <input id="question" name="question" type="text"
+               placeholder="e.g. Who was Rhaenyra Targaryen's father?" required />
+      </label>
+
+      <fieldset class="sources">
+        <legend>Sources</legend>
+        <label><input type="checkbox" name="source" value="A Song of Ice and Fire" checked /> Novels</label>
+        <label><input type="checkbox" name="source" value="fire-and-blood" checked /> Fire &amp; Blood</label>
+        <label><input type="checkbox" name="source" value="knight" checked /> A Knight of the Seven Kingdoms</label>
+        <label><input type="checkbox" name="source" value="got" /> GoT (show)</label>
+        <label><input type="checkbox" name="source" value="hotd" /> HotD (show)</label>
+        <label><input type="checkbox" name="source" value="wiki" /> Wiki (fill-in)</label>
+      </fieldset>
+
+      <button type="submit" class="ask-btn">Ask</button>
+    </form>
+
+    <section id="answer" class="answer" hidden aria-live="polite">
+      <div class="answer-body"></div>
+      <ul class="citations"></ul>
+      <p class="answer-meta"></p>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>Phase 0 scaffold · single-user · cited answers only</span>
+  </footer>
+
+  <script type="module" src="/app/theme.js"></script>
+  <script type="module" src="/app/app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () =>
+        navigator.serviceWorker.register("/sw.js").catch(() => {})
+      );
+    }
+  </script>
+</body>
+</html>

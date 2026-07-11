@@ -1,0 +1,13 @@
+# Copy to .dev.vars for local `wrangler pages dev`. Never commit .dev.vars.
+# Phase 0 only needs AUTH_TOKEN; the rest arrive in later phases.
+
+# Server-side gate (critique 5). Any long random string for now.
+AUTH_TOKEN="change-me-dev-token"
+
+# Phase 3+: inference provider keys (leave blank until then).
+GEMINI_API_KEY=""
+GROQ_API_KEY=""
+CEREBRAS_API_KEY=""
+
+# Phase 2+ (optional): local model endpoint for Ollama/Gemma fallback.
+OLLAMA_URL="http://localhost:11434"

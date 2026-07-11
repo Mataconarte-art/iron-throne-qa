@@ -1,0 +1,25 @@
+/* Design contract. The whole UI reads from these variables, so a theme is a
+   runtime switch (one data-theme attribute), not three separate builds.
+   Palettes are a starting point — tune against mockups. */
+
+:root,
+[data-theme="blackfyre"] {          /* obsidian & gold */
+  --bg:#0b0b0d; --surface:#15151a; --text:#f4efe6; --muted:#9a9488;
+  --accent:#d4af37; --accent-2:#7a5c14; --border:#2a2a30;
+  --font-display:"Cinzel",serif; --font-body:"EB Garamond",serif;
+  --radius:10px; --sigil:url("/icons/blackfyre.svg");
+}
+
+[data-theme="valyria"] {            /* parchment & oxblood */
+  --bg:#efe7d3; --surface:#f7f1e1; --text:#2a211a; --muted:#6b5d4a;
+  --accent:#6e1a1a; --accent-2:#a83232; --border:#d8cbb0;
+  --font-display:"Cinzel",serif; --font-body:"EB Garamond",serif;
+  --radius:8px; --sigil:url("/icons/valyria.svg");
+}
+
+[data-theme="wall"] {               /* slate & ice-blue */
+  --bg:#0f141a; --surface:#18202a; --text:#e8f1f8; --muted:#8ea3b5;
+  --accent:#7fc3e0; --accent-2:#3d6d86; --border:#243141;
+  --font-display:"Cinzel",serif; --font-body:"EB Garamond",serif;
+  --radius:10px; --sigil:url("/icons/wall.svg");
+}

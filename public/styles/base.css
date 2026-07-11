@@ -1,0 +1,151 @@
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.brand { display: flex; align-items: center; gap: 0.6rem; }
+.brand h1 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+.sigil {
+  width: 28px; height: 28px;
+  background: var(--sigil) center / contain no-repeat;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.4));
+}
+
+/* Theme switch */
+.theme-switch { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.theme-switch button {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.theme-switch button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.theme-switch button:hover { color: var(--text); }
+
+/* Main */
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.4rem 1.1rem;
+}
+
+.ask { display: flex; flex-direction: column; gap: 1.1rem; }
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+#question {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.85rem;
+}
+#question:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.sources {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.4rem 0.9rem;
+}
+.sources legend {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0 0.3rem;
+}
+.sources label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.95rem; }
+.sources input { accent-color: var(--accent); }
+
+.ask-btn {
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7rem 1.6rem;
+  cursor: pointer;
+  transition: filter .15s;
+}
+.ask-btn:hover { filter: brightness(1.08); }
+.ask-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* Answer card */
+.answer {
+  margin-top: 1.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.15rem;
+}
+.answer-body { font-size: 1.05rem; }
+.citations { list-style: none; margin: 0.9rem 0 0; padding: 0.9rem 0 0; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.45rem; }
+.citations li { font-size: 0.85rem; color: var(--muted); }
+.citations a { color: var(--accent-2); text-decoration: none; }
+.citations a:hover { text-decoration: underline; }
+.answer-meta { margin: 0.8rem 0 0; font-size: 0.75rem; color: var(--muted); font-style: italic; }
+
+/* Footer */
+.app-footer {
+  padding: 0.9rem 1.1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}

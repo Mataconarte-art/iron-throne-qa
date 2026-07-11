@@ -1,0 +1,23 @@
+{
+  "name": "iron-throne-qa",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Single-user, private, cited Q&A app over the ASOIAF universe. Phase 0 scaffold.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wrangler pages dev public",
+    "deploy": "wrangler pages deploy public",
+    "ingest:parse": "node ingest/parse.js",
+    "ingest:chunk": "node ingest/chunk.js",
+    "ingest:embed": "node ingest/embed.js",
+    "ingest:load": "node ingest/load.js",
+    "ingest:graph": "node ingest/build-graph.js",
+    "eval": "node eval/run-eval.js"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}
