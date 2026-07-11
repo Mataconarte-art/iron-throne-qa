@@ -18,8 +18,11 @@ const TARGET_CHARS = 1200; // ~300 tokens; safely under bge-small's 512-token li
 const OVERLAP_CHARS = 150; // carry-over between adjacent chunks for context
 // ---------------------------------------------------------------------------
 
-// Which raw files to process, and how to label them.
-// The bundle is split into 4 novels by detecting each title page.
+// Books within a bundle MUST be listed in reading order.
+// `startMarker` (optional): used when a book's title page has NO extractable
+// title text (e.g. it's an image). A Feast for Crows is exactly this case in
+// this bundle — its only in-text mention after the contents list is the praise
+// blurb that sits at the very start of the book's section, so we anchor there.
 const SOURCES = [
   {
     rawId: "bundle-1-4",
@@ -27,7 +30,7 @@ const SOURCES = [
       { bookId: "agot", title: "A Game of Thrones" },
       { bookId: "acok", title: "A Clash of Kings" },
       { bookId: "asos", title: "A Storm of Swords" },
-      { bookId: "affc", title: "A Feast for Crows" },
+      { bookId: "affc", title: "A Feast for Crows", startMarker: /Feast for Crows is a fast-paced/i },
     ],
   },
   { rawId: "fire-and-blood", split: [{ bookId: "fab", title: "Fire & Blood" }] },
@@ -39,7 +42,6 @@ function clean(raw) {
   let t = raw.replace(/\r/g, "");
   // de-hyphenate words split across a line break: "imag-\nination" -> "imagination"
   t = t.replace(/([A-Za-z])-\n([a-z])/g, "$1$2");
-  // split into paragraphs on blank lines, join wrapped lines within a paragraph
   const paras = t
     .split(/\n{2,}/)
     .map((p) => p.replace(/\n/g, " ").replace(/[ \t]{2,}/g, " ").trim())
@@ -47,35 +49,47 @@ function clean(raw) {
   return paras;
 }
 
-// Find the character offset where each book's story begins, by locating its
-// title page: the title line followed shortly by publishing/copyright text.
+// Find the character offset where each book's story begins. ORDER-AWARE: each
+// book must start after the previous one. Detection order per book:
+//   1) a real title page (title on its own line + publishing boilerplate),
+//   2) an explicit startMarker (for image-only title pages),
+//   3) fallback: first title occurrence after the previous book.
 function findBookStarts(fullText, split) {
   if (split.length === 1) return [{ ...split[0], start: 0 }];
+  const lower = fullText.toLowerCase();
+  const titleSet = split.map((s) => s.title.toLowerCase());
   const marks = [];
+  let minStart = 0;
   for (const b of split) {
-    // Match the TITLE-CASE title as its own line, CASE-SENSITIVELY. The
-    // CONTENTS list is ALL-CAPS ("A GAME OF THRONES") so it won't match;
-    // only the real title page ("A Game of Thrones") does. We additionally
-    // require publishing boilerplate just after, to skip running headers.
     const esc = b.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|\\n)[ \\t]*${esc}[ \\t]*(?=\\n)`, "g"); // no "i" flag
+    const re = new RegExp(`(^|\\n)[ \\t]*${esc}[ \\t]*(?=\\n)`, "gi");
     let m, chosen = -1;
     while ((m = re.exec(fullText)) !== null) {
       const titleAt = m.index + (m[1] ? m[1].length : 0);
-      const after = fullText.slice(titleAt + b.title.length, titleAt + b.title.length + 400);
-      if (/Bantam|PUBLISHING HISTORY|Spectra/i.test(after)) {
+      if (titleAt < minStart) continue; // must come after the previous book
+      const after = fullText.slice(titleAt + b.title.length, titleAt + b.title.length + 200);
+      const nextLines = after.split(/\n/).map((l) => l.trim().toLowerCase()).filter(Boolean);
+      const first = nextLines[0] || "";
+      const nextIsBookTitle = titleSet.some((t) => first.startsWith(t.slice(0, 8)));
+      const nextIsFrontMatter = /^(about the author|also by|excerpt|contents|cover|title page|table of contents|maps?|appendix|dramatis)/.test(first);
+      const hasBoilerplate = /bantam|spectra|publishing history/.test(after.toLowerCase());
+      if (!nextIsBookTitle && !nextIsFrontMatter && hasBoilerplate) {
         chosen = titleAt;
         break;
       }
     }
-    marks.push({ ...b, start: chosen });
-  }
-  // fall back to first occurrence if a title page wasn't matched
-  for (const mk of marks) {
-    if (mk.start < 0) {
-      const idx = fullText.toLowerCase().indexOf(mk.title.toLowerCase());
-      mk.start = idx < 0 ? 0 : idx;
+    // (2) explicit startMarker for image-only title pages
+    if (chosen < 0 && b.startMarker) {
+      const rel = fullText.slice(minStart).search(b.startMarker);
+      if (rel >= 0) chosen = minStart + rel;
     }
+    // (3) fallback: first title occurrence after the previous book
+    if (chosen < 0) {
+      const idx = lower.indexOf(b.title.toLowerCase(), minStart);
+      chosen = idx < 0 ? minStart : idx;
+    }
+    marks.push({ ...b, start: chosen });
+    minStart = chosen + 1;
   }
   marks.sort((a, b) => a.start - b.start);
   return marks;
@@ -89,14 +103,7 @@ function chunkParagraphs(paras, bookId, book) {
   const flush = () => {
     const text = buf.trim();
     if (text.length < 50) return; // skip tiny fragments
-    chunks.push({
-      id: `${bookId}#${idx}`,
-      bookId,
-      book,
-      chunkIndex: idx,
-      chars: text.length,
-      text,
-    });
+    chunks.push({ id: `${bookId}#${idx}`, bookId, book, chunkIndex: idx, chars: text.length, text });
     idx += 1;
   };
   for (const p of paras) {
@@ -105,16 +112,14 @@ function chunkParagraphs(paras, bookId, book) {
       buf = buf.slice(Math.max(0, buf.length - OVERLAP_CHARS)); // overlap tail
     }
     buf += (buf ? " " : "") + p;
-    // a single very long paragraph: hard-split it
     while (buf.length > TARGET_CHARS * 1.6) {
       const cut = buf.lastIndexOf(" ", TARGET_CHARS);
       const at = cut > TARGET_CHARS * 0.5 ? cut : TARGET_CHARS;
       const piece = buf.slice(0, at);
-      buf = buf.slice(at - OVERLAP_CHARS);
-      const saved = buf;
+      const rest = buf.slice(at - OVERLAP_CHARS);
       buf = piece;
       flush();
-      buf = saved.trimStart();
+      buf = rest.trimStart();
     }
   }
   flush();
