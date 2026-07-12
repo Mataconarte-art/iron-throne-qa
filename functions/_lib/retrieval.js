@@ -1,50 +1,81 @@
-// Hybrid retrieval behind one interface: vector hits merged with graph-traversal
-// facts, filtered by the selected sources. Phase 0 returns canned, source-tagged
-// snippets so the end-to-end contract is exercised without any data loaded.
+// Hybrid retrieval behind one interface: vector hits (Vectorize) merged with
+// graph-traversal facts, filtered by the selected sources.
 //
-// Phase 1+ real path:
+// Phase 1 REAL path (vector side live; graph traversal is a later phase):
 //   1. embed(question)  — Workers AI bge-small-en-v1.5, 384-dim (same as ingest)
 //   2. getVectorStore(env).query(embedding, { topK, filter: sourceFilter(sources) })
-//   3. graph facts: traverse graph/seed-targaryen.json for relational questions
-//   4. merge + de-dupe + rank
+//   3. normalize matches into the { work, locator, url, text } shape ask.js/adapter expect
+//
+// If the AI or VECTORIZE binding is missing (e.g. `wrangler pages dev` without
+// remote bindings), we fall back to an empty result so the app shell still
+// responds instead of 500-ing.
 
-// import { getVectorStore } from "./vectorStore.js";
+import { getVectorStore } from "./vectorStore.js";
 
-export async function retrieve({ question, sources /*, env */ }) {
-  // STUB: a single canned, cited snippet. Shape matches what the real
-  // retriever will return so ask.js and the client never change.
-  const allowed = sources && sources.length ? sources : ["novels"];
+const EMBED_MODEL = "@cf/baai/bge-small-en-v1.5"; // MUST match ingest/embed.js
+const TOP_K = 8;
+
+// UI source category (checkbox `value` in public/index.html) -> corpus bookIds.
+// bookIds come from ingest/chunk.js. Categories with no corpus yet (show/wiki)
+// map to nothing and are simply dropped from the filter.
+const SOURCE_TO_BOOKIDS = {
+  "A Song of Ice and Fire": ["agot", "acok", "asos", "affc"], // + "adwd" once book 5 is ingested
+  "fire-and-blood": ["fab"],
+  "knight": ["kotsk"],
+  // "got" / "hotd" (show transcripts) and "wiki" — Phase 2+, no vectors yet.
+};
+
+// Turn selected UI sources into a Vectorize metadata filter on bookId.
+// Returns undefined when nothing maps (→ unfiltered query over all books).
+export function sourceFilter(sources) {
+  if (!sources || !sources.length) return undefined;
+  const ids = [...new Set(sources.flatMap((s) => SOURCE_TO_BOOKIDS[s] || []))];
+  if (!ids.length) return undefined;
+  return { bookId: { $in: ids } };
+}
+
+async function embedQuestion(question, env) {
+  const res = await env.AI.run(EMBED_MODEL, { text: [question] });
+  const vec = res?.data?.[0];
+  if (!Array.isArray(vec) || vec.length !== 384) {
+    throw new Error(`Query embedding wrong shape: ${vec?.length}`);
+  }
+  return vec;
+}
+
+// Normalize a stored Vectorize match into the citation shape the adapter uses.
+function toSnippet(m) {
+  const md = m.metadata || {};
   return {
-    vector: [
-      {
-        id: "stub-1",
-        score: 1.0,
-        metadata: {
-          work: "Fire & Blood",
-          locator: "The Heirs of the Dragon",
-          type: "history",
-          url: "https://awoiaf.westeros.org/index.php/Rhaenyra_Targaryen",
-          text:
-            "Rhaenyra Targaryen was the only daughter of King Viserys I Targaryen " +
-            "and his first wife, Queen Aemma Arryn.",
-        },
-      },
-    ],
-    graph: [
-      {
-        subject: "Rhaenyra Targaryen",
-        relation: "father",
-        object: "Viserys I Targaryen",
-        source: "seed-targaryen.json",
-      },
-    ],
-    sourcesUsed: allowed,
-    stub: true,
+    id: m.id,
+    score: m.score,
+    metadata: {
+      work: md.book,                     // e.g. "A Game of Thrones"
+      locator: `chunk ${md.chunkIndex}`, // stable in-book locator
+      type: "novel",
+      bookId: md.bookId,
+      url: null,                         // no per-passage URL for book text
+      text: md.text,
+    },
   };
 }
 
-// Turn UI source keys into a vector-store metadata filter (Phase 1 wiring).
-export function sourceFilter(sources) {
-  if (!sources || !sources.length) return undefined;
-  return { work: { $in: sources } };
+export async function retrieve({ question, sources, env }) {
+  const allowed = sources && sources.length ? sources : ["A Song of Ice and Fire"];
+
+  // Graceful fallback if bindings aren't present (local dev without remote).
+  if (!env || !env.AI || !env.VECTORIZE) {
+    return { vector: [], graph: [], sourcesUsed: allowed, stub: true, note: "AI/VECTORIZE binding missing" };
+  }
+
+  const embedding = await embedQuestion(question, env);
+  const store = getVectorStore(env);
+  const matches = await store.query(embedding, { topK: TOP_K, filter: sourceFilter(allowed) });
+
+  return {
+    vector: matches.map(toSnippet),
+    graph: [], // graph traversal wired in a later phase; keep shape stable
+    sourcesUsed: allowed,
+    stub: false,
+  };
 }

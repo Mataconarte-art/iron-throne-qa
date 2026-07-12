@@ -49,8 +49,8 @@ export async function answer({ question, sources, retrieved, env }) {
     answer: answerText,
     citations,
     meta:
-      `stub · provider=${provider} (${PROVIDERS[provider].model}) · ` +
-      `sources=[${(sources || []).join(", ")}] · phase 0 — no model called`,
+      `provider=${provider} (${PROVIDERS[provider].model}) · ` +
+      `sources=[${(sources || []).join(", ")}] · phase 1 — retrieval live, generation stubbed (LLM in phase 3)`,
   };
 }
 

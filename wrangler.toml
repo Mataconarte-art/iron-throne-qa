@@ -6,22 +6,26 @@ name = "iron-throne-qa"
 compatibility_date = "2025-07-01"
 pages_build_output_dir = "public"
 
-# --- Workers AI (Phase 1+): embeddings via bge-small-en-v1.5, 384-dim ---
-# [ai]
-# binding = "AI"
+# --- Workers AI (Phase 1): query-time embeddings via bge-small-en-v1.5, 384-dim.
+#     Same model as ingest (ingest/embed.js). env.AI in functions/_lib/retrieval.js ---
+[ai]
+binding = "AI"
 
-# --- Vectorize (Phase 1+): swappable behind functions/_lib/vectorStore.js ---
-# NOTE: index must be created 384-dim to match bge-small-en-v1.5.
-#   wrangler vectorize create iron-throne --dimensions=384 --metric=cosine
-# [[vectorize]]
-# binding = "VECTORIZE"
-# index_name = "iron-throne"
+# --- Vectorize (Phase 1): swappable behind functions/_lib/vectorStore.js ---
+# Index created 384-dim / cosine to match bge-small-en-v1.5:
+#   npx wrangler vectorize create iron-throne --dimensions=384 --metric=cosine
+# Metadata index on bookId (must exist BEFORE inserting vectors) enables source filtering:
+#   npx wrangler vectorize create-metadata-index iron-throne --property-name=bookId --type=string
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "iron-throne"
 
-# --- D1 (only if graph.json outgrows memory; see graph/schema.sql) ---
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "iron-throne-graph"
-# database_id = "REPLACE_ME"
+# --- D1 graph (infra provisioned in Phase 1; query path wired in a later phase).
+#     After `npx wrangler d1 create iron-throne-graph`, paste the id and uncomment. ---
+[[d1_databases]]
+binding = "DB"
+database_name = "iron-throne-graph"
+database_id = "e461f784-dd8e-400c-9064-61b435c7e726"
 
 # Secrets (auth token, provider API keys) are set with:
 #   wrangler pages secret put AUTH_TOKEN

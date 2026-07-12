@@ -19,5 +19,8 @@
   },
   "devDependencies": {
     "wrangler": "^3.90.0"
+  },
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
   }
 }

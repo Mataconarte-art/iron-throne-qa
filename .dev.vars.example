@@ -4,6 +4,14 @@
 # Server-side gate (critique 5). Any long random string for now.
 AUTH_TOKEN="change-me-dev-token"
 
+# Phase 1 LOCAL ingest only — embed.js calls Workers AI over REST.
+# Account ID: Cloudflare dashboard -> Workers & Pages (right sidebar).
+# API token: My Profile -> API Tokens -> Create Token with
+#   "Workers AI (Read)" + "Vectorize (Edit)" permissions.
+# NOT used by the deployed Function (it uses the [ai]/[[vectorize]] bindings).
+CLOUDFLARE_ACCOUNT_ID=""
+CLOUDFLARE_API_TOKEN=""
+
 # Phase 3+: inference provider keys (leave blank until then).
 GEMINI_API_KEY=""
 GROQ_API_KEY=""

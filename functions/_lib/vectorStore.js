@@ -18,7 +18,9 @@ export function vectorizeStore(env) {
       const res = await env.VECTORIZE.query(embedding, {
         topK,
         filter,
-        returnMetadata: true,
+        // "all" returns non-indexed metadata too (we need `text`, which is not
+        // an indexed property — only bookId is indexed for filtering).
+        returnMetadata: "all",
       });
       return (res.matches || []).map((m) => ({
         id: m.id,
