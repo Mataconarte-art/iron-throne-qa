@@ -11,6 +11,7 @@
 // responds instead of 500-ing.
 
 import { getVectorStore } from "./vectorStore.js";
+import { queryGraph } from "./graph.js";
 
 const EMBED_MODEL = "@cf/baai/bge-small-en-v1.5"; // MUST match ingest/embed.js
 const TOP_K = 8;
@@ -63,9 +64,22 @@ function toSnippet(m) {
 export async function retrieve({ question, sources, env }) {
   const allowed = sources && sources.length ? sources : ["A Song of Ice and Fire"];
 
-  // Graceful fallback if bindings aren't present (local dev without remote).
+  // Graph traversal (Phase 2) is independent of the vector bindings — it reads
+  // the bundled genealogy graph (or D1) — so it runs even in local dev without
+  // remote AI/Vectorize. `queryGraph` never throws; a miss just returns [].
+  const graphRes = await queryGraph(env, question);
+
+  // Graceful fallback if vector bindings aren't present (local dev without
+  // remote). We can still answer relational questions from the graph alone.
   if (!env || !env.AI || !env.VECTORIZE) {
-    return { vector: [], graph: [], sourcesUsed: allowed, stub: true, note: "AI/VECTORIZE binding missing" };
+    return {
+      vector: [],
+      graph: graphRes.facts,
+      graphMeta: { relation: graphRes.relation, entities: graphRes.entities, ambiguous: graphRes.ambiguous },
+      sourcesUsed: allowed,
+      stub: true,
+      note: "AI/VECTORIZE binding missing (graph still active)",
+    };
   }
 
   const embedding = await embedQuestion(question, env);
@@ -74,7 +88,8 @@ export async function retrieve({ question, sources, env }) {
 
   return {
     vector: matches.map(toSnippet),
-    graph: [], // graph traversal wired in a later phase; keep shape stable
+    graph: graphRes.facts,
+    graphMeta: { relation: graphRes.relation, entities: graphRes.entities, ambiguous: graphRes.ambiguous },
     sourcesUsed: allowed,
     stub: false,
   };

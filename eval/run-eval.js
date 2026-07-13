@@ -32,6 +32,10 @@ function mechanicalChecks(q, resp) {
   if (q.required_citation) {
     checks.push({ name: "citation-present", pass: cites.length > 0 });
   }
+  if (Array.isArray(q.expected_facts) && q.expected_facts.length) {
+    const missing = q.expected_facts.filter((f) => !text.includes(f.toLowerCase()));
+    checks.push({ name: "expected-facts-present", pass: missing.length === 0, detail: missing.length ? missing : undefined });
+  }
   if (q.must_refuse) {
     const refused = /do not cover|cannot|no( relevant)? (information|answer)|not (found|covered)/i.test(
       resp.data.answer || ""

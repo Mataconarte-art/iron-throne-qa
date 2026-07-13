@@ -1,0 +1,148 @@
+// review-edges — Phase 2. The human REVIEW GATE between LLM extraction and the
+// graph. Only edges a person approves here reach the graph; curated data stays
+// the source of truth (critique 3).
+//
+// Reads   ingest/out/edge-candidates.jsonl  (from extract-edges.js; gitignored)
+// Writes  graph/reviewed-edges.json           (COMMITTED array of approved edges;
+//                                              read by both build-graph.js and the
+//                                              Function at runtime)
+//
+// Candidates are classified so you only spend attention on NEW, resolvable facts:
+//   confirms-seed : resolved AND already in the curated seed -> auto-skip (no-op)
+//   novel         : resolved AND not in the seed             -> REVIEW
+//   needs-node    : a name didn't resolve to a known node    -> REVIEW (add a seed
+//                                                               node first, by hand)
+//
+// Usage (from repo root):
+//   node ingest/review-edges.js               # classify + write a markdown worklist
+//   node ingest/review-edges.js --interactive # approve/reject novel edges ->
+//                                             #   graph/reviewed-edges.json
+
+import fs from "node:fs";
+import path from "node:path";
+import readline from "node:readline";
+import { fileURLToPath } from "node:url";
+import { edgeKey } from "../graph/compile.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..");
+const CANDIDATES = path.join(ROOT, "ingest", "out", "edge-candidates.jsonl");
+const REVIEWED = path.join(ROOT, "graph", "reviewed-edges.json");
+const WORKLIST = path.join(ROOT, "ingest", "out", "edges-to-review.md");
+const SEED = path.join(ROOT, "graph", "seed-targaryen.json");
+const GRAPH = path.join(ROOT, "graph", "graph.json");
+
+const INTERACTIVE = process.argv.includes("--interactive");
+
+function loadCandidates() {
+  if (!fs.existsSync(CANDIDATES)) return [];
+  const out = [];
+  for (const line of fs.readFileSync(CANDIDATES, "utf8").split(/\r?\n/)) {
+    const t = line.trim(); if (!t) continue;
+    try { const r = JSON.parse(t); if (!r.__processed) out.push(r); } catch {}
+  }
+  return out;
+}
+function loadReviewed() {
+  if (!fs.existsSync(REVIEWED)) return [];
+  try { const a = JSON.parse(fs.readFileSync(REVIEWED, "utf8")); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+function saveReviewed(arr) {
+  fs.writeFileSync(REVIEWED, JSON.stringify(arr, null, 2) + "\n");
+}
+const nameOf = (graph, id) => graph.nodes?.[id]?.name || id;
+
+async function main() {
+  if (!fs.existsSync(CANDIDATES)) {
+    console.error(`[review-edges] No candidates at ${CANDIDATES}. Run \`node ingest/extract-edges.js\` first.`);
+    process.exit(1);
+  }
+  if (!fs.existsSync(GRAPH)) {
+    console.error(`[review-edges] Missing graph/graph.json. Run \`node ingest/build-graph.js\` first.`);
+    process.exit(1);
+  }
+  const seed = JSON.parse(fs.readFileSync(SEED, "utf8"));
+  const graph = JSON.parse(fs.readFileSync(GRAPH, "utf8"));
+  const seedKeys = new Set(seed.edges.map(edgeKey));
+  const candidates = loadCandidates();
+
+  const reviewed = loadReviewed();
+  const decided = new Map(reviewed.map((r) => [edgeKey(r), r.status || "approved"]));
+
+  // Group by canonical edge; collect evidence + provenance.
+  const groups = new Map();
+  for (const c of candidates) {
+    const resolved = c.resolved && (c.type === "parent" ? c.from && c.to : c.a && c.b);
+    const key = resolved ? edgeKey(c) : `unresolved|${c.type}|${c.rawSubject}|${c.rawObject}`;
+    if (!groups.has(key)) {
+      let cls = "needs-node";
+      if (resolved) cls = seedKeys.has(edgeKey(c)) ? "confirms-seed" : "novel";
+      groups.set(key, { key, edge: c, evidence: new Set(), chunks: new Set(), resolved, cls, count: 0 });
+    }
+    const g = groups.get(key);
+    if (c.evidence) g.evidence.add(c.evidence);
+    g.chunks.add(c.chunkId);
+    g.count++;
+  }
+
+  const all = [...groups.values()];
+  const byCls = (c) => all.filter((g) => g.cls === c);
+  const confirms = byCls("confirms-seed"), novel = byCls("novel"), needsNode = byCls("needs-node");
+
+  console.log(`[review-edges] candidates=${candidates.length}  unique edges=${all.length}`);
+  console.log(`  confirms-seed : ${confirms.length}  (already curated — auto-skipped)`);
+  console.log(`  novel         : ${novel.length}  (resolved, not in seed — REVIEW)`);
+  console.log(`  needs-node    : ${needsNode.length}  (a name didn't resolve — REVIEW)`);
+
+  const describe = (g) => {
+    const e = g.edge;
+    if (e.type === "parent") return `${g.resolved ? nameOf(graph, e.from) : e.rawSubject} —parent-of→ ${g.resolved ? nameOf(graph, e.to) : e.rawObject}`;
+    return `${g.resolved ? nameOf(graph, e.a) : e.rawSubject} —spouse-of→ ${g.resolved ? nameOf(graph, e.b) : e.rawObject}`;
+  };
+
+  if (!INTERACTIVE) {
+    const lines = [
+      "# Edges to review\n",
+      "> Generated by ingest/review-edges.js. Approve interactively with",
+      "> `node ingest/review-edges.js --interactive`, or hand-add approved edges to",
+      "> graph/reviewed-edges.json (an array of `{type, from/to | a/b, status:\"approved\"}`).\n",
+    ];
+    for (const [title, list] of [["Novel (resolved, not in seed)", novel], ["Needs node (unresolved name)", needsNode]]) {
+      lines.push(`\n## ${title} — ${list.length}\n`);
+      for (const g of list.sort((a, b) => b.count - a.count)) {
+        lines.push(`- **${describe(g)}**  _(seen ${g.count}× in ${g.chunks.size} chunk(s); status: ${decided.get(g.key) || "pending"})_`);
+        for (const ev of [...g.evidence].slice(0, 2)) lines.push(`    - “${ev}”`);
+      }
+    }
+    fs.writeFileSync(WORKLIST, lines.join("\n") + "\n");
+    console.log(`\n[review-edges] Wrote worklist → ingest/out/edges-to-review.md`);
+    console.log(`[review-edges] Approve interactively: node ingest/review-edges.js --interactive`);
+    return;
+  }
+
+  const queue = novel.filter((g) => !decided.has(g.key));
+  if (!queue.length) { console.log("\n[review-edges] No undecided novel edges. Nothing to do."); return; }
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ask = (q) => new Promise((r) => rl.question(q, r));
+  let approved = 0, rejected = 0;
+
+  console.log(`\n[review-edges] ${queue.length} novel edge(s) to review. [a]pprove / [r]eject / [s]kip / [q]uit\n`);
+  for (const g of queue) {
+    console.log(`  ${describe(g)}   (seen ${g.count}×)`);
+    for (const ev of [...g.evidence].slice(0, 2)) console.log(`     “${ev}”`);
+    const ans = (await ask("  > ")).trim().toLowerCase();
+    if (ans === "q") break;
+    const e = g.edge;
+    const base = e.type === "parent" ? { type: "parent", from: e.from, to: e.to } : { type: "spouse", a: e.a, b: e.b };
+    if (ans === "a") { reviewed.push({ ...base, source: "extracted:reviewed", status: "approved", evidenceChunks: [...g.chunks] }); approved++; }
+    else if (ans === "r") { reviewed.push({ ...base, status: "rejected" }); rejected++; }
+    console.log("");
+  }
+  rl.close();
+  saveReviewed(reviewed);
+  console.log(`[review-edges] approved=${approved} rejected=${rejected} → graph/reviewed-edges.json`);
+  console.log(`[review-edges] Rebuild + reload D1: node ingest/build-graph.js && (optional) wrangler d1 execute ... --file=graph/edges.sql`);
+}
+
+main().catch((e) => { console.error(`[review-edges] FAILED: ${e.message}`); process.exit(1); });

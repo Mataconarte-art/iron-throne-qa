@@ -19,30 +19,79 @@ export function selectProvider(env) {
   return PROVIDERS[pref] ? pref : "gemini";
 }
 
+// Compose a deterministic sentence from graph facts (Phase 2). Groups objects by
+// their relation to the same subject: "Rhaenyra Targaryen's parents were Viserys
+// I Targaryen (father) and Aemma Arryn (mother)." No model involved — the facts
+// come straight from the curated genealogy graph.
+const GROUP_PLURAL = { parent: "parents", child: "children", spouse: "spouses", sibling: "siblings", grandparent: "grandparents", grandchild: "grandchildren", ancestor: "ancestors", descendant: "descendants" };
+const LABEL_PLURAL = { father: "fathers", mother: "mothers", son: "sons", daughter: "daughters", wife: "wives", husband: "husbands", brother: "brothers", sister: "sisters", grandfather: "grandfathers", grandmother: "grandmothers", grandson: "grandsons", granddaughter: "granddaughters", parent: "parents", child: "children", spouse: "spouses", sibling: "siblings", grandparent: "grandparents", grandchild: "grandchildren", ancestor: "ancestors", descendant: "descendants" };
+
+export function composeGenealogyAnswer(facts, graphMeta) {
+  if (!facts || !facts.length) return null;
+  const bySubject = new Map();
+  for (const f of facts) {
+    if (!bySubject.has(f.subject)) bySubject.set(f.subject, []);
+    bySubject.get(f.subject).push(f);
+  }
+  const clauses = [];
+  for (const [subject, fs] of bySubject) {
+    const labels = [...new Set(fs.map((f) => f.relation))];
+    let noun, items;
+    if (labels.length === 1) {
+      // Homogeneous (e.g. all "father"): use the gendered noun, plain objects.
+      noun = fs.length > 1 ? LABEL_PLURAL[labels[0]] || labels[0] : labels[0];
+      items = fs.map((f) => f.object);
+    } else {
+      // Mixed (e.g. father + mother): collapse to the group noun, annotate each.
+      const rel = (graphMeta && graphMeta.relation) || "relative";
+      noun = GROUP_PLURAL[rel] || rel;
+      items = fs.map((f) => `${f.object} (${f.relation})`);
+    }
+    const verb = fs.length > 1 ? "were" : "was";
+    clauses.push(`${subject}'s ${noun} ${verb} ${listJoin(items)}.`);
+  }
+  let text = clauses.join(" ");
+  if (graphMeta && graphMeta.ambiguous) {
+    text += " (Note: the name matched more than one person in the genealogy; results are shown for each.)";
+  }
+  return text;
+}
+
+function listJoin(arr) {
+  if (arr.length <= 1) return arr[0] || "";
+  if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+  return `${arr.slice(0, -1).join(", ")}, and ${arr[arr.length - 1]}`;
+}
+
 // The single entry point ask.js calls.
 export async function answer({ question, sources, retrieved, env }) {
   const provider = selectProvider(env);
 
-  // Phase 0 STUB: build a cited answer directly from retrieved material.
-  // (Later: call the provider with a strict "answer only from context, one
-  //  citation per claim, refuse if uncovered" prompt.)
+  // Phase 2 STUB (still no provider call — real LLM lands in Phase 3): build a
+  // cited answer directly from retrieved material. Relational questions are
+  // answered from the genealogy GRAPH (exact, verified); everything else falls
+  // back to the top book passage.
   const snippet = retrieved?.vector?.[0]?.metadata;
-  const graphFact = retrieved?.graph?.[0];
-
-  const answerText = snippet
-    ? snippet.text
-    : "The sources provided do not cover that. (stub)";
+  const graphFacts = retrieved?.graph || [];
+  const graphMeta = retrieved?.graphMeta || {};
 
   const citations = [];
-  if (snippet) {
+  let answerText;
+
+  const genealogy = composeGenealogyAnswer(graphFacts, graphMeta);
+  if (genealogy) {
+    answerText = genealogy;
+    // One citation per graph fact (critique 3 — every relational claim is grounded).
+    for (const f of graphFacts) {
+      citations.push({ work: "Genealogy graph", locator: `${f.subject} → ${f.relation} → ${f.object}`, url: null });
+    }
+    // Attach a supporting book passage if retrieval found one.
+    if (snippet) citations.push({ work: snippet.work, locator: snippet.locator, url: snippet.url });
+  } else if (snippet) {
+    answerText = snippet.text;
     citations.push({ work: snippet.work, locator: snippet.locator, url: snippet.url });
-  }
-  if (graphFact) {
-    citations.push({
-      work: "Genealogy graph",
-      locator: `${graphFact.subject} → ${graphFact.relation} → ${graphFact.object}`,
-      url: null,
-    });
+  } else {
+    answerText = "The sources provided do not cover that. (stub)";
   }
 
   return {
@@ -50,7 +99,7 @@ export async function answer({ question, sources, retrieved, env }) {
     citations,
     meta:
       `provider=${provider} (${PROVIDERS[provider].model}) · ` +
-      `sources=[${(sources || []).join(", ")}] · phase 1 — retrieval live, generation stubbed (LLM in phase 3)`,
+      `sources=[${(sources || []).join(", ")}] · phase 2 — retrieval + genealogy graph live, generation stubbed (LLM in phase 3)`,
   };
 }
 

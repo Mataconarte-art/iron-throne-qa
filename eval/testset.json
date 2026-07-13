@@ -1,6 +1,6 @@
 {
-  "$comment": "The 10-question eval set. Phase 0 ships the harness + schema with a small illustrative set; the real curated questions + rubrics land with docs/Eval-Test-Questions.md. Each item: mechanical checks (deterministic) + a correctness rubric (LLM-as-judge, critique 8).",
-  "version": "0.1.0",
+  "$comment": "The eval set. Phase 0 shipped the harness + a tiny illustrative set (Q1,Q2,Q9,Q10). Phase 2 adds genealogy-graph cases (Q3–Q8) now answerable from the curated Targaryen graph. Each item: mechanical checks (deterministic — citations, expected_facts, refusal, spoiler ceiling) + a correctness rubric (LLM-as-judge, critique 8, Phase 3). sources use the real UI categories in functions/_lib/retrieval.js: 'A Song of Ice and Fire' and 'fire-and-blood'.",
+  "version": "0.2.0",
   "questions": [
     {
       "id": "Q1",
@@ -21,12 +21,67 @@
       "must_refuse": false
     },
     {
+      "id": "Q3",
+      "question": "Who were the parents of Rhaenyra Targaryen?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Viserys I Targaryen", "Aemma Arryn"],
+      "required_citation": true,
+      "must_refuse": false
+    },
+    {
+      "id": "Q4",
+      "question": "Who were Aegon the Conqueror's wives?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Visenya Targaryen", "Rhaenys Targaryen"],
+      "required_citation": true,
+      "must_refuse": false
+    },
+    {
+      "id": "Q5",
+      "question": "Who were the children of Aegon II Targaryen and Helaena?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Jaehaerys Targaryen", "Jaehaera Targaryen", "Maelor Targaryen"],
+      "required_citation": true,
+      "must_refuse": false
+    },
+    {
+      "id": "Q6",
+      "question": "Who was Daenerys Targaryen's father?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Aerys II Targaryen"],
+      "required_citation": true,
+      "must_refuse": false
+    },
+    {
+      "id": "Q7",
+      "question": "Who were the siblings of Aegon II Targaryen?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Rhaenyra Targaryen", "Helaena Targaryen", "Aemond Targaryen", "Daeron Targaryen"],
+      "required_citation": true,
+      "must_refuse": false
+    },
+    {
+      "id": "Q8",
+      "question": "Who was Robert Baratheon's grandmother?",
+      "type": "genealogy-graph",
+      "sources": ["fire-and-blood"],
+      "expected_facts": ["Rhaelle Targaryen"],
+      "required_citation": true,
+      "must_refuse": false,
+      "note": "Tests the Baratheon claim-line offshoot: Aegon V -> Rhaelle -> Steffon -> Robert."
+    },
+    {
       "id": "Q9",
       "question": "What is Jon Snow's true parentage?",
       "type": "spoiler-ceiling",
-      "sources": ["novels"],
+      "sources": ["A Song of Ice and Fire"],
       "spoiler_ceiling": "end-of-AGOT",
-      "note": "By end of AGOT this is NOT revealed; a correct answer must not exceed the ceiling.",
+      "note": "By end of AGOT this is NOT revealed. The genealogy graph deliberately omits the Rhaegar+Lyanna->Jon edge, so a graph-backed answer cannot exceed the ceiling.",
       "required_citation": true,
       "must_refuse": false,
       "must_not_reveal": ["Rhaegar Targaryen", "Lyanna Stark"]
@@ -35,7 +90,7 @@
       "id": "Q10",
       "question": "What color is Daenerys's smartphone?",
       "type": "out-of-corpus",
-      "sources": ["novels", "fire-and-blood"],
+      "sources": ["A Song of Ice and Fire", "fire-and-blood"],
       "expected_facts": [],
       "required_citation": false,
       "must_refuse": true

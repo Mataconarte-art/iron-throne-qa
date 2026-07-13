@@ -9,12 +9,16 @@
   },
   "scripts": {
     "dev": "wrangler pages dev public",
+    "dev:vec": "wrangler pages dev public --experimental-vectorize-bind-to-prod",
     "deploy": "wrangler pages deploy public",
     "ingest:parse": "node ingest/parse.js",
     "ingest:chunk": "node ingest/chunk.js",
     "ingest:embed": "node ingest/embed.js",
     "ingest:load": "node ingest/load.js",
+    "ingest:extract": "node ingest/extract-edges.js",
+    "ingest:review": "node ingest/review-edges.js",
     "ingest:graph": "node ingest/build-graph.js",
+    "test:graph": "node eval/graph-selftest.mjs",
     "eval": "node eval/run-eval.js"
   },
   "devDependencies": {
